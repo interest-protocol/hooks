@@ -19,6 +19,7 @@ module hooks::swap_burn {
   const EInvalidRequestName: u64 = 2;
   const EInvalidRequestPool: u64 = 3;
   const EInvalidCoinType: u64 = 4;
+  const EHooksBuilderPoolMismatch: u64 = 5;
 
   // === Constants ===
 
@@ -55,6 +56,7 @@ module hooks::swap_burn {
 
   public fun add<CoinType>(pool: &InterestPool<Volatile>, hooks_builder: &mut HooksBuilder, value: u64, ctx: &mut TxContext): Admin {
     assert!(MAX_FEE >= value, EFeeIsTooHigh);
+    assert!(pool.addy() == hooks_builder.pool_address_(), EHooksBuilderPoolMismatch);
 
     let coin_type = type_name::get<CoinType>();
 
