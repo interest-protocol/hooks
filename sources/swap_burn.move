@@ -18,6 +18,7 @@ module hooks::swap_burn {
   const EInvalidAdmin: u64 = 1;
   const EInvalidRequestName: u64 = 2;
   const EInvalidRequestPool: u64 = 3;
+  const EInvalidCoinType: u64 = 4;
 
   // === Constants ===
 
@@ -55,8 +56,12 @@ module hooks::swap_burn {
   public fun add<CoinType>(pool: &InterestPool<Volatile>, hooks_builder: &mut HooksBuilder, value: u64, ctx: &mut TxContext): Admin {
     assert!(MAX_FEE >= value, EFeeIsTooHigh);
 
+    let coin_type = type_name::get<CoinType>();
+
+    assert!(pool.coins().contains(&coin_type), EInvalidCoinType);
+
     hooks_builder.add_rule(interest_pool::start_swap_name().utf8(), BurnHook {});
-    hooks_builder.add_rule_config(BurnHook {}, FeeData { value, coin_type: type_name::get<CoinType>() });
+    hooks_builder.add_rule_config(BurnHook {}, FeeData { value, coin_type });
 
     Admin {
       id: object::new(ctx),
