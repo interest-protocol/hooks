@@ -12,11 +12,12 @@ module hooks::swap_burn {
 
   use suitears::math64::mul_div_down;
 
+  use hooks::admin::{Self, Admin};
+
   // === Errors ===
 
   const EFeeIsTooHigh: u64 = 0;
-  const EInvalidAdmin: u64 = 1;
-  const EInvalidRequestName: u64 = 2;
+  const EInvalidRequestName: u64 = 1;
   const EInvalidRequestPool: u64 = 3;
   const EInvalidCoinType: u64 = 4;
   const EHooksBuilderPoolMismatch: u64 = 5;
@@ -42,11 +43,6 @@ module hooks::swap_burn {
    coin_type: TypeName
   }
 
-  public struct Admin has key, store {
-   id: UID,
-   pool: address
-  }
-
   // === Method Aliases ===
 
   use fun mul_div_down as u64.mul_div;
@@ -65,10 +61,7 @@ module hooks::swap_burn {
     hooks_builder.add_rule(interest_pool::start_swap_name().utf8(), BurnHook {});
     hooks_builder.add_rule_config(BurnHook {}, FeeData { value, coin_type });
 
-    Admin {
-      id: object::new(ctx),
-      pool: pool.addy()
-    }
+    admin::new(pool.addy(), ctx)
   }
 
   public fun swap<CoinIn, CoinOut, LpCoin>(
@@ -98,17 +91,11 @@ module hooks::swap_burn {
 
   public fun set_fee(admin: &Admin, pool: &mut InterestPool<Volatile>, value: u64) {
     assert!(MAX_FEE >= value, EFeeIsTooHigh);
-    assert!(admin.id.to_address() == pool.addy(), EInvalidAdmin);
+    admin.assert_pool(pool.addy());
 
     let fee_data = pool.config_mut<Volatile, BurnHook, FeeData>(BurnHook {});
 
     fee_data.value = value;
-  }
-
-  public fun destroy(admin: Admin) {
-    let Admin { id, pool: _ } = admin;
-
-    id.delete();
   }
 
   // === Public-Package Functions ===
