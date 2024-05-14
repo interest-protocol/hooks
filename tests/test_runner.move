@@ -36,7 +36,7 @@ module hooks::test_runner {
  public struct TestRunner {
   clock: Clock,
   scenario: Scenario,
-  pool: InterestPool<Volatile>,
+  pool: vector<InterestPool<Volatile>>,
   coin_decimals: CoinDecimals,
   pool_admin: PoolAdmin,
   hooks_builder: vector<HooksBuilder>,
@@ -56,12 +56,12 @@ module hooks::test_runner {
 
   let coin_decimals = scenario_mut.take_shared<CoinDecimals>();
 
-  let (pool, pool_admin, hooks_builder, lp_coin) = new_pool(&clock, &coin_decimals, scenario_mut);
+  let (pool, pool_admin, hooks_builder, lp_coin) = new_pool_impl(&clock, &coin_decimals, scenario_mut);
 
   TestRunner {
    clock,
    scenario,
-   pool,
+   pool: vector[pool],
    coin_decimals,
    pool_admin,
    hooks_builder: vector[hooks_builder],
@@ -82,7 +82,11 @@ module hooks::test_runner {
  }
 
  public fun pool(self: &mut TestRunner): &mut InterestPool<Volatile> {
-  &mut self.pool
+  &mut self.pool[0]
+ }
+
+ public fun pop_pool(self: &mut TestRunner): InterestPool<Volatile> {
+  self.pool.pop_back()
  }
 
  public fun coin_decimals(self: &mut TestRunner): &mut CoinDecimals {
@@ -97,29 +101,37 @@ module hooks::test_runner {
   &mut self.hooks_builder[0]
  }
 
+ public fun pop_hooks_builder(self: &mut TestRunner): HooksBuilder {
+  self.hooks_builder.pop_back()
+ }
+
  public fun lp_coin(self: &mut TestRunner): &mut Coin<LP_COIN> {
   &mut self.lp_coin
  }
 
  public fun blocklist_add(self: &mut TestRunner): Admin {
-  blocklist::add(&self.pool, &mut self.hooks_builder[0], self.scenario.ctx())
+  blocklist::add(&self.pool[0], &mut self.hooks_builder[0], self.scenario.ctx())
  }
 
  public fun blocklist_approve(self: &mut TestRunner, request: &mut Request) {
-  blocklist::approve(&self.pool, request, self.scenario.ctx());
+  blocklist::approve(&self.pool[0], request, self.scenario.ctx());
  }
 
  public fun blocklist_is_blocklisted(self: &mut TestRunner, user: address): bool {
-  blocklist::is_blocklisted(&self.pool, user)
+  blocklist::is_blocklisted(&self.pool[0], user)
  }
 
  public fun add_hooks(self: &mut TestRunner): &mut TestRunner {
   let hooks_builder = self.hooks_builder.pop_back();
-  self.pool.add_hooks(hooks_builder);
+  self.pool[0].add_hooks(hooks_builder);
   self
  }
 
- fun new_pool(
+ public fun new_pool(self: &mut TestRunner): (InterestPool<Volatile>, PoolAdmin, HooksBuilder, Coin<LP_COIN>) {
+  new_pool_impl(&self.clock, &self.coin_decimals, &mut self.scenario)
+ }
+
+ fun new_pool_impl(
   clock: &Clock, 
   coin_decimals: &CoinDecimals,
   test: &mut Scenario, 

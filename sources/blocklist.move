@@ -12,8 +12,7 @@ module hooks::blocklist {
   // === Errors ===
 
   const EHooksBuilderPoolMismatch: u64 = 0;
-  const EInvalidRequestName: u64 = 1;
-  const EBlocklisted: u64 = 2;
+  const EBlocked: u64 = 1;
   const EInvalidRequestPool: u64 = 3;
 
   // === Constants ===
@@ -44,15 +43,10 @@ module hooks::blocklist {
 
   public fun approve(pool: &InterestPool<Volatile>, request: &mut Request, ctx: &mut TxContext) {
     assert!(request.pool_address() == pool.addy(), EInvalidRequestPool);
-    assert!(
-      request.name() == interest_pool::start_swap_name().utf8()
-      || request.name() == interest_pool::start_add_liquidity_name().utf8(), 
-      EInvalidRequestName
-    );
 
     let blocklist = pool.config<Volatile, BlocklistHook, Blocklist>();
 
-    assert!(!blocklist.inner.contains(ctx.sender()), EBlocklisted);
+    assert!(!blocklist.inner.contains(ctx.sender()), EBlocked);
 
     request.approve(BlocklistHook {});
   }

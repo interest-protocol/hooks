@@ -85,4 +85,48 @@ module hooks::blocklist_tests {
   hook_admin.destroy();
   runner.end();  
  }
+
+ #[test]
+ #[expected_failure(abort_code = hooks::blocklist::EHooksBuilderPoolMismatch)]
+ fun test_add_hooks_builder_pool_mismatch() {
+  let mut runner = test_runner::start();
+
+  let (wrong_pool, pool_admin, wrong_hooks_builder, lp_coin) = runner.new_pool();
+  let mut hooks_builder = runner.pop_hooks_builder();
+
+  let hook_admin = blocklist::add(&wrong_pool, &mut hooks_builder, runner.scenario().ctx());
+
+  hook_admin.destroy();
+
+  destroy(wrong_pool);
+  destroy(pool_admin);
+  destroy(hooks_builder);
+  destroy(wrong_hooks_builder);
+  destroy(lp_coin);
+  runner.end();  
+ }
+
+ #[test]
+ #[expected_failure(abort_code = hooks::blocklist::EBlocked)]
+ fun test_approve_blocked() {
+  let mut runner = test_runner::start();
+
+  // Adds the hook to the builder
+  let hook_admin = runner.blocklist_add();
+
+  let sender = runner.scenario().ctx().sender();
+
+  let mut request = runner
+  .add_hooks()
+  .pool()
+  .start_swap();
+
+  blocklist::add_blocklist(&hook_admin, runner.pool(), sender);
+
+  runner.blocklist_approve(&mut request);
+
+  hook_admin.destroy();
+  destroy(request);
+  runner.end();  
+ } 
 }
