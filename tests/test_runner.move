@@ -18,6 +18,7 @@ module hooks::test_runner {
  use clamm::interest_pool::{InterestPool, HooksBuilder, Request}; 
 
  use hooks::blocklist;
+ use hooks::whitelist;
  use hooks::admin::Admin;
 
  const ADMIN: address = @0xa117ce;
@@ -113,12 +114,24 @@ module hooks::test_runner {
   blocklist::add(&self.pool[0], &mut self.hooks_builder[0], self.scenario.ctx())
  }
 
+ public fun whitelist_add(self: &mut TestRunner): Admin {
+  whitelist::add(&self.pool[0], &mut self.hooks_builder[0], self.scenario.ctx())
+ } 
+
  public fun blocklist_approve(self: &mut TestRunner, request: &mut Request) {
   blocklist::approve(&self.pool[0], request, self.scenario.ctx());
  }
 
+ public fun whitelist_approve(self: &mut TestRunner, request: &mut Request) {
+  whitelist::approve(&self.pool[0], request, self.scenario.ctx());
+ }
+
  public fun blocklist_is_blocklisted(self: &mut TestRunner, user: address): bool {
   blocklist::is_blocklisted(&self.pool[0], user)
+ }
+
+ public fun whitelist_is_whitelisted(self: &mut TestRunner, user: address): bool {
+  whitelist::is_whitelisted(&self.pool[0], user)
  }
 
  public fun add_hooks(self: &mut TestRunner): &mut TestRunner {

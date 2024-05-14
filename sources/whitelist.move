@@ -7,13 +7,13 @@ module hooks::whitelist {
   use clamm::curves::Volatile;
   use clamm::interest_pool::{Self, InterestPool, HooksBuilder, Request};
 
+  use hooks::admin::{Self, Admin};
+
   // === Errors ===
 
   const EHooksBuilderPoolMismatch: u64 = 0;
-  const EInvalidRequestName: u64 = 1;
-  const ENotWhitelisted: u64 = 2;
-  const EInvalidRequestPool: u64 = 3;
-  const EInvalidAdmin: u64 = 4;
+  const ENotWhitelisted: u64 = 1;
+  const EInvalidRequestPool: u64 = 2;
 
   // === Constants ===
 
@@ -23,11 +23,6 @@ module hooks::whitelist {
 
   public struct Whitelist has store {
     inner: Table<address, bool>
-  }
-
-  public struct Admin has key, store {
-   id: UID,
-   pool: address
   }
 
   // === Method Aliases ===
@@ -43,19 +38,11 @@ module hooks::whitelist {
     hooks_builder.add_rule(interest_pool::start_add_liquidity_name().utf8(), WhitelistHook {});
     hooks_builder.add_rule_config(WhitelistHook {}, Whitelist { inner: table::new(ctx) });
 
-    Admin {
-      id: object::new(ctx),
-      pool: pool.addy()
-    }
+    admin::new(pool.addy(), ctx)
   }
 
   public fun approve(pool: &InterestPool<Volatile>, request: &mut Request, ctx: &mut TxContext) {
     assert!(request.pool_address() == pool.addy(), EInvalidRequestPool);
-    assert!(
-      request.name() == interest_pool::start_swap_name().utf8()
-      || request.name() == interest_pool::start_add_liquidity_name().utf8(), 
-      EInvalidRequestName
-    );
 
     let whitelist = pool.config<Volatile, WhitelistHook, Whitelist>();
 
@@ -72,26 +59,20 @@ module hooks::whitelist {
 
   // === Admin Functions ===
 
-  public fun add_whitelist(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
-    assert!(admin.id.to_address() == pool.addy(), EInvalidAdmin);
+  public fun add_user(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
+    admin.assert_pool(pool.addy());
     
     let whitelist = pool.config_mut<Volatile, WhitelistHook, Whitelist>(WhitelistHook {});
 
     whitelist.inner.add(user, true);
   }
 
-  public fun remove_whitelist(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
-    assert!(admin.id.to_address() == pool.addy(), EInvalidAdmin);
+  public fun remove_user(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
+    admin.assert_pool(pool.addy());
     
     let whitelist = pool.config_mut<Volatile, WhitelistHook, Whitelist>(WhitelistHook {});
 
     whitelist.inner.remove(user);
-  }
-
-  public fun destroy(admin: Admin) {
-    let Admin { id, pool: _ } = admin;
-
-    id.delete();
   }
 
   // === Public-Package Functions ===

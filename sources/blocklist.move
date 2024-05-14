@@ -13,7 +13,7 @@ module hooks::blocklist {
 
   const EHooksBuilderPoolMismatch: u64 = 0;
   const EBlocked: u64 = 1;
-  const EInvalidRequestPool: u64 = 3;
+  const EInvalidRequestPool: u64 = 2;
 
   // === Constants ===
 
@@ -59,7 +59,7 @@ module hooks::blocklist {
 
   // === Admin Functions ===
 
-  public fun add_blocklist(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
+  public fun add_user(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
     admin.assert_pool(pool.addy());
     
     let blocklist = pool.config_mut<Volatile, BlocklistHook, Blocklist>(BlocklistHook {});
@@ -67,7 +67,7 @@ module hooks::blocklist {
     blocklist.inner.add(user, true);
   }
 
-  public fun remove_blocklist(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
+  public fun remove_user(admin: &Admin, pool: &mut InterestPool<Volatile>, user: address) {
     admin.assert_pool(pool.addy());
     
     let blocklist = pool.config_mut<Volatile, BlocklistHook, Blocklist>(BlocklistHook {});
