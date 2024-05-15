@@ -6,6 +6,7 @@ module hooks::blocklist_tests {
 
  use clamm::interest_pool::HooksBuilder;
 
+ use hooks::admin;
  use hooks::test_runner;
  use hooks::assert_hooks_builder;
  use hooks::blocklist::{Self, BlocklistHook};
@@ -92,7 +93,7 @@ module hooks::blocklist_tests {
   let mut runner = test_runner::start();
 
   let (wrong_pool, pool_admin, wrong_hooks_builder, lp_coin) = runner.new_pool();
-  let mut hooks_builder = runner.pop_hooks_builder();
+  let mut hooks_builder = runner.take_hooks_builder();
 
   let hook_admin = blocklist::add(&wrong_pool, &mut hooks_builder, runner.scenario().ctx());
 
@@ -135,7 +136,6 @@ module hooks::blocklist_tests {
  fun test_approve_blocked() {
   let mut runner = test_runner::start();
 
-  // Adds the hook to the builder
   let hook_admin = runner.blocklist_add();
 
   let sender = runner.scenario().ctx().sender();
@@ -152,5 +152,55 @@ module hooks::blocklist_tests {
   hook_admin.destroy();
   destroy(request);
   runner.end();  
+ } 
+
+ #[test]
+ #[expected_failure]
+ fun test_add_user_invalid_admin() {
+  let mut runner = test_runner::start();
+
+  runner.blocklist_add().destroy();
+
+  let sender = runner.scenario().ctx().sender();
+
+  let mut request = runner
+  .add_hooks()
+  .pool()
+  .start_swap();
+
+  let invalid_admin = admin::new_for_testing(@0x3, runner.scenario().ctx());
+
+  blocklist::add_user(&invalid_admin, runner.pool(), sender);
+
+  runner.blocklist_approve(&mut request);
+
+  invalid_admin.destroy();
+  destroy(request);
+  runner.end();    
+ }
+
+ #[test]
+ #[expected_failure]
+ fun test_remove_user_invalid_admin() {
+  let mut runner = test_runner::start();
+
+  runner.blocklist_add().destroy();
+
+  let sender = runner.scenario().ctx().sender();
+
+  let mut request = runner
+  .add_hooks()
+  .pool()
+  .start_swap();
+
+  let invalid_admin = admin::new_for_testing(@0x3, runner.scenario().ctx());
+
+  blocklist::remove_user(&invalid_admin, runner.pool(), sender);
+
+  runner.blocklist_approve(&mut request);
+
+  invalid_admin.destroy();
+  destroy(request);
+  runner.end();    
  } 
 }

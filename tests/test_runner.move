@@ -19,6 +19,7 @@ module hooks::test_runner {
 
  use hooks::blocklist;
  use hooks::whitelist;
+ use hooks::swap_burn;
  use hooks::admin::Admin;
 
  const ADMIN: address = @0xa117ce;
@@ -35,7 +36,7 @@ module hooks::test_runner {
  const ETH_INITIAL_PRICE: u256 = 1500 * 1_000_000_000_000_000_000;
 
  public struct TestRunner {
-  clock: Clock,
+  clock: vector<Clock>,
   scenario: Scenario,
   pool: vector<InterestPool<Volatile>>,
   coin_decimals: CoinDecimals,
@@ -60,7 +61,7 @@ module hooks::test_runner {
   let (pool, pool_admin, hooks_builder, lp_coin) = new_pool_impl(&clock, &coin_decimals, scenario_mut);
 
   TestRunner {
-   clock,
+   clock: vector[clock],
    scenario,
    pool: vector[pool],
    coin_decimals,
@@ -75,7 +76,11 @@ module hooks::test_runner {
  }
 
  public fun clock(self: &mut TestRunner): &mut Clock {
-  &mut self.clock
+  &mut self.clock[0]
+ }
+
+ public fun take_clock(self: &mut TestRunner): Clock {
+  self.clock.pop_back()
  }
 
  public fun scenario(self: &mut TestRunner): &mut Scenario {
@@ -86,8 +91,13 @@ module hooks::test_runner {
   &mut self.pool[0]
  }
 
- public fun pop_pool(self: &mut TestRunner): InterestPool<Volatile> {
+ public fun take_pool(self: &mut TestRunner): InterestPool<Volatile> {
   self.pool.pop_back()
+ }
+
+ public fun return_pool(self: &mut TestRunner, pool: InterestPool<Volatile>): &mut TestRunner {
+  self.pool.push_back(pool);
+  self
  }
 
  public fun coin_decimals(self: &mut TestRunner): &mut CoinDecimals {
@@ -102,7 +112,7 @@ module hooks::test_runner {
   &mut self.hooks_builder[0]
  }
 
- public fun pop_hooks_builder(self: &mut TestRunner): HooksBuilder {
+ public fun take_hooks_builder(self: &mut TestRunner): HooksBuilder {
   self.hooks_builder.pop_back()
  }
 
@@ -117,6 +127,10 @@ module hooks::test_runner {
  public fun whitelist_add(self: &mut TestRunner): Admin {
   whitelist::add(&self.pool[0], &mut self.hooks_builder[0], self.scenario.ctx())
  } 
+
+ public fun swap_burn_add<CoinType>(self: &mut TestRunner, value: u64): Admin {
+  swap_burn::add<CoinType>(&self.pool[0], &mut self.hooks_builder[0], value, self.scenario.ctx())
+ }
 
  public fun blocklist_approve(self: &mut TestRunner, request: &mut Request) {
   blocklist::approve(&self.pool[0], request, self.scenario.ctx());
@@ -134,6 +148,15 @@ module hooks::test_runner {
   whitelist::is_whitelisted(&self.pool[0], user)
  }
 
+ public fun swap_burn_swap<CoinIn, CoinOut>(self: &mut TestRunner, request: Request, coin_in: Coin<CoinIn>): (Request, Coin<CoinOut>) {
+  swap_burn::swap<CoinIn, CoinOut, LP_COIN>(&mut self.pool[0], &self.clock[0], request, coin_in, 0, self.scenario.ctx())
+ }
+
+ public fun pool_finish(self: &mut TestRunner, request: Request): &mut TestRunner {
+  self.pool().finish(request);
+  self
+ }  
+
  public fun add_hooks(self: &mut TestRunner): &mut TestRunner {
   let hooks_builder = self.hooks_builder.pop_back();
   self.pool[0].add_hooks(hooks_builder);
@@ -141,7 +164,7 @@ module hooks::test_runner {
  }
 
  public fun new_pool(self: &mut TestRunner): (InterestPool<Volatile>, PoolAdmin, HooksBuilder, Coin<LP_COIN>) {
-  new_pool_impl(&self.clock, &self.coin_decimals, &mut self.scenario)
+  new_pool_impl(&self.clock[0], &self.coin_decimals, &mut self.scenario)
  }
 
  fun new_pool_impl(

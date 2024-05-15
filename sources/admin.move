@@ -52,4 +52,9 @@ module hooks::admin {
   // === Private Functions ===
 
   // === Test Functions === 
+
+  #[test_only]
+  public fun new_for_testing(pool: address, ctx: &mut TxContext): Admin {
+    new(pool, ctx)
+  }
 }

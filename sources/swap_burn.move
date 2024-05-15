@@ -109,12 +109,12 @@ module hooks::swap_burn {
     let fee_data = pool.config<Volatile, BurnHook, FeeData>();
     let coin_type = type_name::get<CoinType>();
 
+    request.approve(BurnHook {});
+
     if (fee_data.coin_type != coin_type) return;
 
     let coin_value = coin_in.value();
     let burn_value = coin_value.mul_div(fee_data.value, PRECISION);
-
-    request.approve(BurnHook {});
 
     transfer::public_transfer(coin_in.split(burn_value, ctx), BURN_ADDRESS);
   }

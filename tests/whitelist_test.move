@@ -6,6 +6,7 @@ module hooks::whitelist_tests {
 
  use clamm::interest_pool::HooksBuilder;
 
+ use hooks::admin;
  use hooks::test_runner;
  use hooks::assert_hooks_builder;
  use hooks::whitelist::{Self, WhitelistHook};
@@ -98,7 +99,7 @@ module hooks::whitelist_tests {
   let mut runner = test_runner::start();
 
   let (wrong_pool, pool_admin, wrong_hooks_builder, lp_coin) = runner.new_pool();
-  let mut hooks_builder = runner.pop_hooks_builder();
+  let mut hooks_builder = runner.take_hooks_builder();
 
   let hook_admin = whitelist::add(&wrong_pool, &mut hooks_builder, runner.scenario().ctx());
 
@@ -141,7 +142,6 @@ module hooks::whitelist_tests {
  fun test_approve_not_whitelisted() {
   let mut runner = test_runner::start();
 
-  // Adds the hook to the builder
   let hook_admin = runner.whitelist_add();
 
   let mut request = runner
@@ -155,4 +155,40 @@ module hooks::whitelist_tests {
   destroy(request);
   runner.end();  
  } 
+
+ #[test]
+ #[expected_failure]
+ fun test_add_user_invalid_admin() {
+  let mut runner = test_runner::start();
+
+  runner.whitelist_add().destroy();
+
+  // Adds the hook tot he pool
+  runner.add_hooks();
+
+  let invalid_admin = admin::new_for_testing(@0x3, runner.scenario().ctx());
+
+  whitelist::add_user(&invalid_admin, runner.pool(), @0x3);
+
+  invalid_admin.destroy();
+  runner.end();  
+ }  
+
+ #[test]
+ #[expected_failure]
+ fun test_remove_user_invalid_admin() {
+  let mut runner = test_runner::start();
+
+  runner.whitelist_add().destroy();
+
+  // Adds the hook tot he pool
+  runner.add_hooks();
+
+  let invalid_admin = admin::new_for_testing(@0x3, runner.scenario().ctx());
+
+  whitelist::remove_user(&invalid_admin, runner.pool(), @0x3);
+
+  invalid_admin.destroy();
+  runner.end();  
+ }  
 }
